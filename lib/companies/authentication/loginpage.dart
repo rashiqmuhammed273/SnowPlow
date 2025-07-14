@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snowplow/Animation.dart';
 import 'package:snowplow/companies/authentication/registerpage.dart';
 import 'package:snowplow/companies/bottmnav.dart';
 import 'dart:convert';
@@ -56,23 +57,10 @@ class _CmploginState extends State<Cmplogin> {
         print(responcedata);
         if (responcedata["message"] == "agency Logged In") {
           final agencyId = responcedata['data']['agency_id'].toString();
-          final agencyname = responcedata['data']['agency_name'].toString();
-          final agencynumber = responcedata['data']['agency_phone'].toString();
-          final agencyemail = responcedata['data']['agency_email'].toString();
-
-          print('agnecyname$agencyname');
-
-          final List<String> getprofile = [
-            agencyId,
-            agencyname,
-            agencyemail,
-            agencynumber
-          ];
-
+       
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString("agencyid", agencyId);
-          print("agencyyude id$agencyId");
-          await prefs.setStringList("agency_profile", getprofile);
+          await prefs.setString("agency_id", agencyId);
+        
  
           print('Login successful: $responcedata');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -81,10 +69,12 @@ class _CmploginState extends State<Cmplogin> {
               backgroundColor: Colors.teal[200],
             ),
           );
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => Cmpnavabar()),
-          );
+          Navigator.pushAndRemoveUntil(
+  context,
+  MaterialPageRoute(builder: (_) => const Cmpnavabar()),
+  (route) => false,
+);
+
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Invalid credentials')),
@@ -227,7 +217,7 @@ class _CmploginState extends State<Cmplogin> {
 
                       // Login Button
                       _isLoading
-                          ? CircularProgressIndicator()
+                          ? SnowLoader()
                           : ElevatedButton(
                               onPressed: _login,
                               style: ElevatedButton.styleFrom(

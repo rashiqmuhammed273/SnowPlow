@@ -10,36 +10,35 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snowplow/user/homepage.dart';
 
-class Companydirect extends StatefulWidget {
-  const Companydirect(
-      {super.key, required this.companyId, required this.selectedAgency});
-  final String selectedAgency;
+class Editrequest extends StatefulWidget {
+  Editrequest({super.key, required this.companyId, required this.previousdata,required this.companyname});
+final String?companyname;
   final String companyId;
+  Map<String, dynamic> previousdata;
 
   @override
-  State<Companydirect> createState() => _CompanydirectState();
+  State<Editrequest> createState() => _EditrequestState();
 }
 
-class _CompanydirectState extends State<Companydirect> {
+class _EditrequestState extends State<Editrequest> {
   TextEditingController areaController = TextEditingController();
   TextEditingController locationController = TextEditingController();
   TextEditingController companycontroller = TextEditingController();
   DateTime? selectedDate;
   double? serviceLatitude;
   double? serviceLongitude;
-  String? selectedservicetype;
+  String selectedservicetype = '';
   String? _urgency = "";
   TimeOfDay? selectedTime;
   String? formattedDate;
   String? formattedtime;
-  String selectedAreaType = "";
+
   String selectedCompany = "";
   String? base64Image;
   bool isloading = false;
   String? imageExtension;
   List<String> servicetype = [];
   String? agencyid;
-  String? agencyname;
 
   final picker = ImagePicker();
   File? _selectedImage;
@@ -48,8 +47,47 @@ class _CompanydirectState extends State<Companydirect> {
   void initState() {
     super.initState();
     agencyid = widget.companyId;
-    agencyname = widget.selectedAgency;
-    companycontroller.text=agencyname!;
+    final data = widget.previousdata;
+    final agencyname=widget.companyname;
+
+    agencyid = widget.companyId;
+    companycontroller.text = agencyname?? '';
+    areaController.text = data['service_area'] ?? '';
+    locationController.text = data['service_city'] ?? '';
+    selectedservicetype = data['service_type'] ?? '';
+    _urgency = data['urgency_level'] ?? '';
+
+
+    // Date
+    if (data['preferred_date'] != null &&
+        data['preferred_date'].toString().isNotEmpty) {
+      selectedDate = DateTime.tryParse(data['preferred_date']);
+      if (selectedDate != null) {
+        formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate!);
+      }
+    }
+
+    // Time
+    if (data['preferred_time'] != null &&
+        data['preferred_time'].toString().contains(':')) {
+      final parts = data['preferred_time'].split(':');
+      if (parts.length >= 2) {
+        selectedTime = TimeOfDay(
+          hour: int.tryParse(parts[0]) ?? 0,
+          minute: int.tryParse(parts[1]) ?? 0,
+        );
+
+        final now = DateTime.now();
+        formattedtime = DateFormat('hh:mm:ss').format(DateTime(
+          now.year,
+          now.month,
+          now.day,
+          selectedTime!.hour,
+          selectedTime!.minute,
+        ));
+      }
+    }
+
     _fetchServicetype();
   }
 
@@ -61,7 +99,7 @@ class _CompanydirectState extends State<Companydirect> {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({"per_page": "10", "page": "0", "api_mode": "test"}),
+        body: jsonEncode({"per_page":"10","page": "0","api_mode": "test"}),
       );
 
       if (response.statusCode == 200) {
@@ -152,11 +190,13 @@ class _CompanydirectState extends State<Companydirect> {
   }
 
   void _pickDate(BuildContext context) async {
+    DateTime today = DateTime.now();
+
     final DateTime? pickedDate = await showDatePicker(
       context: context,
-      initialDate: selectedDate ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
+      initialDate: today,
+      firstDate: today,
+      lastDate: DateTime(today.year + 1),
     );
 
     if (pickedDate != null) {
@@ -176,8 +216,16 @@ class _CompanydirectState extends State<Companydirect> {
     if (pickedTime != null) {
       setState(() {
         selectedTime = pickedTime;
-        final dt = DateTime(pickedTime.hour, pickedTime.minute);
-        formattedtime = DateFormat('hh:mm a').format(dt); // Example: 02:30 PM
+        final now = DateTime.now();
+        final dt = DateTime(
+          // year, month, day, hour, min
+          now.year,
+          now.month,
+          now.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+        formattedtime = DateFormat('hh:mm:ss').format(dt);
       });
     }
   }
@@ -186,8 +234,9 @@ class _CompanydirectState extends State<Companydirect> {
     if (areaController.text.isEmpty ||
         selectedDate == null ||
         selectedTime == null ||
+        _urgency == null ||
         locationController.text.isEmpty ||
-        selectedAreaType.isEmpty) {
+        selectedservicetype.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Please fill in all fields"),
@@ -195,89 +244,75 @@ class _CompanydirectState extends State<Companydirect> {
         ),
       );
       return;
-    }
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? userId = prefs.getString('userId');
+    } else {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
 
-    // List<String> base64ImageList = [];
-    // if (base64ImageList.isNotEmpty) {
-    //   String base64 = base64Encode(await _selectedImage!.readAsBytes());
-    //   base64ImageList.add(base64);
-    // }
+      String apiurl = "https://snowplow.celiums.com/api/requests/update";
 
-    String apiurl = "https://snowplow.celiums.com/api/requests/companyrequest";
+      Map<String, dynamic> requestData = {
+        "customer_id": userId,
+        "agency_id": agencyid,
+        "service_type": selectedservicetype,
+        "service_city": locationController.text,
+        "service_area": areaController.text,
+        "service_street": locationController.text,
+        "preferred_date": formattedDate,
+        "preferred_time": formattedtime,
+        "image": base64Image,
+        "image_ext": imageExtension,
+        "service_latitude": serviceLatitude,
+        "service_longitude": serviceLongitude,
+        "urgency_level": _urgency,
+        "api_mode": "test"
+      };
 
-    Map<String, dynamic> requestData = {
-      "customer_id": userId,
-      "agency_id": agencyid,
-      "service_type": selectedservicetype,
-      "service_city": locationController.text,
-      "service_area": areaController.text,
-      "service_street": locationController.text,
-      "preferred_date": formattedDate,
-      "preferred_time": formattedtime,
-      "image": base64Image,
-      "image_ext": imageExtension,
-      "service_latitude": serviceLatitude,
-      "service_longitude": serviceLongitude,
-      "urgency_level": _urgency,
-      "api_mode": "test"
-    };
+      print('RequestData → ${jsonEncode(requestData)}');
 
-    try {
-      final response = await http.post(
-        Uri.parse(apiurl),
-        headers: {
-          "Content-Type": "application/json",
-          "api_mode": "test",
-        },
-        body: jsonEncode(requestData),
-      );
-
-      if (response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Request submitted successfully!"),
-            backgroundColor: const Color.fromARGB(255, 121, 170, 210),
-          ),
+      try {
+        final response = await http.post(
+          Uri.parse(apiurl),
+          headers: {
+            "Content-Type": "application/json",
+            "api_mode": "test",
+          },
+          body: jsonEncode(requestData),
         );
 
-        // setState(() {
-        //   locationController.clear();
-        //   _urgency="";
-        //   selectedservicetype="";
-        //   areaController.clear();
-        //   selectedDate = null;
-        //   selectedTime = null;
-        //   selectedOption = "";
-        //   selectedAreaType = "";
-        //   _selectedImage = null;
-        //   selectedCompany = "";
-        // });
-        Navigator.pop(
-            context, MaterialPageRoute(builder: (context) => HomeScreen()));
-      } else {
-        print(response.body);
+        if (response.statusCode == 200) {
+          // final jsonData = jsonDecode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Request submitted successfully!"),
+              backgroundColor: const Color.fromARGB(255, 121, 170, 210),
+            ),
+          );
+
+          Navigator.pop(
+              context, MaterialPageRoute(builder: (context) => HomeScreen()));
+        } else {
+          print(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to submit request"),
+              backgroundColor: const Color.fromARGB(255, 255, 22, 22),
+            ),
+          );
+        }
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Failed to submit request"),
-            backgroundColor: const Color.fromARGB(255, 255, 22, 22),
+            content: Text("An error occurred while submitting request"),
+            backgroundColor: const Color.fromARGB(255, 229, 103, 0),
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("An error occurred while submitting request"),
-          backgroundColor: const Color.fromARGB(255, 229, 103, 0),
-        ),
-      );
     }
     setState(() => isloading = true);
   }
 
   ///////////////////
-  ///
+//UI section//
   ///
   @override
   Widget build(BuildContext context) {
@@ -354,7 +389,7 @@ class _CompanydirectState extends State<Companydirect> {
                     TextField(
                       controller: areaController,
                       decoration: InputDecoration(
-                        hintText: "Area in square meters",
+                        hintText:"Area in square meters",
                         border: _inputBorder(),
                         enabledBorder: _inputBorder(),
                         focusedBorder: _inputBorder(color: Colors.blue),
@@ -366,7 +401,9 @@ class _CompanydirectState extends State<Companydirect> {
                     // Service Type Dropdown
                     _buildLabel("Service Type"),
                     DropdownButtonFormField<String>(
-                      value: selectedAreaType.isEmpty ? null : selectedAreaType,
+                      value: selectedservicetype.isEmpty
+                          ? null
+                          : selectedservicetype,
                       decoration: InputDecoration(
                         border: _inputBorder(),
                         enabledBorder: _inputBorder(),
@@ -380,7 +417,7 @@ class _CompanydirectState extends State<Companydirect> {
                       }).toList(),
                       onChanged: (value) {
                         setState(() {
-                          selectedAreaType = value!;
+                          selectedservicetype = value!;
                         });
                       },
                       hint: Text("Select service type"),

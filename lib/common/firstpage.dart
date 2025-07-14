@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:snowplow/companies/bottmnav.dart';
 import 'package:snowplow/common/landingpage.dart';
@@ -13,9 +14,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
-
   void initState() {
     super.initState();
     _checkLoginStatus();
@@ -23,13 +22,13 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkLoginStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String>? companyId = prefs.getStringList("agency_profile");
+    String? companyId = prefs.getString("agency_id");
     String? userId = prefs.getString("userId");
 
     await Future.delayed(Duration(seconds: 2)); // Simulating splash delay
 
     if (companyId != null && companyId.isNotEmpty) {
-      // ✅ User is logged in, navigate to home screen
+      
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => Cmpnavabar()),
@@ -40,10 +39,11 @@ class _SplashScreenState extends State<SplashScreen> {
         MaterialPageRoute(builder: (context) => Bottomnavbar()),
       );
     } else {
-      // ❌ No session found, navigate to login screen
-      Navigator.pushReplacement(
+      
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => Landscreen()),
+        (_) => false,
       );
     }
   }
@@ -53,35 +53,59 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 213, 240, 245),
       appBar: AppBar(backgroundColor: Color.fromARGB(255, 205, 228, 236)),
-      body: Container(
-        height: double.infinity,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Color.fromARGB(255, 205, 228, 236),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Center(
-                child: Text(
-              'Snow Plow',
-              style: GoogleFonts.raleway(
-                  color: const Color.fromARGB(255, 115, 200, 240),
-                  fontSize: 60,
-                  fontWeight: FontWeight.bold),
-            )),
-            SizedBox(
-              height: 10,
-            ),
-            Center(
-                child: Text(
-              'Snow removal App',
-              style: GoogleFonts.ptSansNarrow(
-                  color: const Color.fromARGB(255, 27, 130, 241), fontSize: 20),
-            ))
-          ],
-        ),
+   body: Stack(
+  children: [
+    // 1️⃣ background colour (optional – you already set Scaffold.backgroundColor)
+    Container(color: const Color.fromARGB(255, 205, 228, 236)),
+
+    // 2️⃣ truck animation, full‑screen, touch‑transparent
+    // Positioned(
+      
+    //  top: 90,
+    //   left: 10,
+    //   right: 10,
+    //   child: IgnorePointer(
+    //     child: Lottie.asset(
+    //       'assets/truck animation.json',
+    //       height: 150,
+    //       width: 150,
+          
+            
+    //       repeat: true,
+    //     ),
+    //   ),
+    // ),
+
+    // 3️⃣ centred title text
+    Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Text(
+          //   'Snow Plow',
+          //   style: GoogleFonts.raleway(
+          //     color: const Color.fromARGB(255, 115, 200, 240),
+          //     fontSize: 60,
+          //     fontWeight: FontWeight.bold,
+          //   ),
+          // ),
+          // const SizedBox(height: 10),
+          // Text(
+          //   'Snow removal App',
+          //   style: GoogleFonts.ptSansNarrow(
+          //     color: const Color.fromARGB(255, 27, 130, 241),
+          //     fontSize: 20,
+          //   ),
+          // ),
+          Image.asset("assets/snowplowlogo.png",
+          height: 400,width: 400,),
+          
+        ],
       ),
+    ),
+  ],
+)
+
     );
   }
 }

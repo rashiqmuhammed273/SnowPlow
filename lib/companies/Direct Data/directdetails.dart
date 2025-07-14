@@ -1,99 +1,55 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:snowplow/Animation.dart';
 import 'package:snowplow/companies/bottmnav.dart';
 
-class Showbid extends StatefulWidget {
-  final Map<String, dynamic> biddetails;
-  const Showbid({super.key, required this.biddetails});
+class DIrectDetails extends StatefulWidget {
+  final Map<String, dynamic> requestdetails;
+  final String? Username;
+  const DIrectDetails(
+      {super.key, required this.requestdetails, required this.Username});
 
   @override
-  State<Showbid> createState() => _ShowbidtState();
+  State<DIrectDetails> createState() => _DIrectDetailsState();
 }
 
-class _ShowbidtState extends State<Showbid> {
+class _DIrectDetailsState extends State<DIrectDetails> {
   Map<String, dynamic>? request;
-  bool isLoading = false;
-  final TextEditingController _bidController = TextEditingController();
-  final TextEditingController _comments = TextEditingController();
+  String? customername;
   String? agencyid;
-  bool bidAlreadyPlaced = false;
+  bool isLoading = false;
+
+  bool isAlreadysend = false;
 
   @override
   void initState() {
     super.initState();
-    request = widget.biddetails;
     _initialize();
+    customername = widget.Username;
+    request = widget.requestdetails;
+    final status = request?['isAccepted'] as bool;
+    if (status) {
+      isAlreadysend = true; // Set this based on status
+    }
   }
 
   Future<void> _initialize() async {
     await _getagencyid();
-    await _showbid(); // Now it waits until agencyid is ready
+    // Now it waits until agencyid is ready
   }
 
   Future<void> _getagencyid() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     agencyid = prefs.getString("agencyid");
-    print("getted id frrrrom $agencyid");
+    print("geted id from $agencyid");
   }
 
-  Future<void> _showbid() async {
-    final birequestid = request!["requestid"];
-    print("bid id is $birequestid");
-    try {
-      final response = await http.post(
-        Uri.parse("https://snowplow.celiums.com/api/bids/viewbid"),
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: jsonEncode({
-          "bid_request_id": birequestid,
-          "agency_id": agencyid,
-          "api_mode": "test"
-        }),
-      );
-      final resposnsedata = jsonDecode(response.body);
-      final data = resposnsedata['data'];
-      if (response.statusCode == 200 &&
-          resposnsedata['status'] == 1 &&
-          data != null) {
-        setState(() {
-          _bidController.text = (data['price'] ?? '').toString();
-          _comments.text = (data['comments'] ?? '').toString();
-          print("the bid amount is ${_bidController.text}");
-          bidAlreadyPlaced = true;
-        });
-      } else {
-        setState(() {
-          bidAlreadyPlaced = false;
-        });
-        // Show error message
-        // ScaffoldMessenger.of(context).showSnackBar(
-        //   SnackBar(
-        //     content: Text("fetch bid: ${response.body}"),
-        //     backgroundColor: Colors.red,
-        //   ),
-        // );
-      }
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
-      debugPrint("Error submitting bid: $e");
-    }
-  }
-
-  Future<void> _sendBid() async {
-    print("sendbid called");
+  Future<void> _reply() async {
+    print("reply called");
 
     setState(() {
       isLoading = true;
@@ -101,13 +57,12 @@ class _ShowbidtState extends State<Showbid> {
 
     try {
       final response = await http.post(
-        Uri.parse("https://snowplow.celiums.com/api/bids/createbid"),
+        Uri.parse("https://snowplow.celiums.com/api/agencies/requestaccept"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "bid_request_id": request!["requestid"],
-          "agency_id": agencyid ?? "",
-          "price": _bidController.text,
-          "comments": _comments.text,
+          "request_id": request!["requestId"],
+          "customer_id"
+          "agencyid": agencyid ?? "",    
           "api_mode": "test"
         }),
       );
@@ -116,7 +71,7 @@ class _ShowbidtState extends State<Showbid> {
       if (response.statusCode == 200) {
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Bid submitted successfully!"),
+          content: Text("Request submitted successfully!"),
           backgroundColor: Colors.green,
         ));
 
@@ -130,12 +85,14 @@ class _ShowbidtState extends State<Showbid> {
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Failed to submit bid: ${response.body}"),
+            content: Text("Failed to submit REQUEST: ${response.body}"),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
+    }
+    
+    catch (e) {
       setState(() {
         isLoading = false;
       });
@@ -163,7 +120,7 @@ class _ShowbidtState extends State<Showbid> {
       ),
       body: SafeArea(
         child: isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? SnowLoader()
             : request == null
                 ? Center(
                     child:
@@ -180,11 +137,11 @@ class _ShowbidtState extends State<Showbid> {
                         const SizedBox(height: 24),
                         _buildImageSection(),
                         const SizedBox(height: 24),
-                        bidAlreadyPlaced
-                            ? _buildBidConfirmation(
+                        isAlreadysend
+                            ? _buildconfirmation(
                                 ColorScheme.fromSeed(seedColor: Colors.blue),
                                 GoogleFonts.ralewayTextTheme())
-                            : _buildBidForm(
+                            : _buildrequstform(
                                 ColorScheme.fromSeed(seedColor: Colors.blue),
                                 GoogleFonts.ralewayTextTheme())
                       ],
@@ -206,8 +163,7 @@ class _ShowbidtState extends State<Showbid> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("requested by",
-                style: textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+                style: GoogleFonts.raleway(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -217,9 +173,24 @@ class _ShowbidtState extends State<Showbid> {
                   color: primaryColor,
                 ),
                 const SizedBox(width: 8),
-                Text((request!["userid"] ?? "Unknown").toString())
+                Text(customername!)
+
                 // style: GoogleFonts.poppins(
-                //     fontSize: 14, fontWeight: FontWeight.w500))
+                //     fontSize: 14, fontWeight: FontWeight.w500)
+              ],
+            ),
+            Row(
+              children: [
+                Icon(
+                  Icons.numbers_outlined,
+                  size: 20,
+                  color: primaryColor,
+                ),
+                const SizedBox(width: 8),
+                Text((request!["customerId"] ?? "Unknown").toString()),
+
+                // style: GoogleFonts.poppins(
+                //     fontSize: 14, fontWeight: FontWeight.w500)
               ],
             ),
           ],
@@ -242,18 +213,18 @@ class _ShowbidtState extends State<Showbid> {
                 style: textTheme.titleMedium
                     ?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
-            _buildDetailItem(Icons.numbers_rounded, "Bid number",
-                request!["requestid"]?.toString() ?? "N/A"),
+            _buildDetailItem(Icons.numbers, "Request id",
+                request!["requestId"]?.toString() ?? "N/A"),
             _buildDetailItem(Icons.location_on, "Location",
                 request!["area"]?.toString() ?? "N/A"),
             _buildDetailItem(Icons.access_time, "Uploaded",
-                request!["created_time"]?.toString() ?? "N/A"),
+                request!["created"]?.toString() ?? "N/A"),
             _buildDetailItem(Icons.calendar_today, "Preferred Date",
-                request!["date"]?.toString() ?? "N/A"),
+                request!["preferredDate"]?.toString() ?? "N/A"),
             _buildDetailItem(Icons.schedule, "Preferred Time",
-                request!["time"]?.toString() ?? "N/A"),
+                request!["preferredTime"]?.toString() ?? "N/A"),
             _buildDetailItem(Icons.place, "Service Area",
-                request!["type"]?.toString() ?? "N/A"),
+                request!["street"]?.toString() ?? "N/A"),
             _buildDetailItem(Icons.build, "Service Type",
                 request!["type"]?.toString() ?? "N/A"),
           ],
@@ -334,7 +305,8 @@ class _ShowbidtState extends State<Showbid> {
     );
   }
 
-  Widget _buildBidForm(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildrequstform(ColorScheme colorScheme, TextTheme textTheme) {
+    final status = widget.requestdetails['status'];
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -342,31 +314,6 @@ class _ShowbidtState extends State<Showbid> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Place Your Bid",
-                style: textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _bidController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: "Bid Amount",
-                prefixIcon: const Icon(Icons.attach_money),
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _comments,
-              maxLines: 3,
-              decoration: InputDecoration(
-                labelText: "Comments (Optional)",
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -375,13 +322,19 @@ class _ShowbidtState extends State<Showbid> {
                     child: const Text("Decline"),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : _sendBid,
-                    child: const Text("Submit Bid"),
-                  ),
-                ),
+                isAlreadysend
+                    ? Text(
+                        'Already Accepted',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      )
+                    : ElevatedButton(
+                        onPressed: _reply,
+                        child: const Text("Accept Request"),
+                      ),
               ],
             )
           ],
@@ -390,7 +343,7 @@ class _ShowbidtState extends State<Showbid> {
     );
   }
 
-  Widget _buildBidConfirmation(ColorScheme colorScheme, TextTheme textTheme) {
+  Widget _buildconfirmation(ColorScheme colorScheme, TextTheme textTheme) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -399,23 +352,15 @@ class _ShowbidtState extends State<Showbid> {
           children: [
             Row(
               children: [
-                Icon(Icons.check_circle, color: colorScheme.primary),
+                Icon(Icons.check_circle, color: Colors.green),
                 const SizedBox(width: 8),
-                Text("Bid Placed",
+                Text("Request already sent",
                     style: textTheme.titleSmall?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600)),
+                        color: Colors.green, fontWeight: FontWeight.w600)),
               ],
             ),
             const SizedBox(height: 16),
-            _buildDetailItem(
-                Icons.attach_money,
-                "Bid Amount",
-                _bidController.text.isNotEmpty
-                    ? _bidController.text
-                    : "Not available"),
-            _buildDetailItem(Icons.comment, "comment",
-                _comments.text.isNotEmpty ? _comments.text : "Not available"),
+         
             const SizedBox(height: 16),
             Row(
               children: [
@@ -428,12 +373,11 @@ class _ShowbidtState extends State<Showbid> {
                 const SizedBox(width: 12),
                 Expanded(
                     child: ElevatedButton(
-                  onPressed: bidAlreadyPlaced == true
+                  onPressed: isAlreadysend == true
                       ? null
-                      : _sendBid, // Disable when loading
-                  child: isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Submit Bid"),
+                      : _reply, // Disable when loading
+                  child:
+                      isLoading ? SnowLoader() : const Text("Submit Request"),
                 )),
               ],
             )

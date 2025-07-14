@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:snowplow/companies/bid_req.dart';
-import 'package:snowplow/companies/direct_req.dart';
+import 'package:snowplow/companies/Bid%20data/Showbids.dart';
+import 'package:snowplow/companies/Direct%20Data/Showdirect.dart';
 
 class Tapbarscreen extends StatefulWidget {
   const Tapbarscreen({super.key, required this.agencydata});
-  final List<String>? agencydata;
+  final String? agencydata;
 
   @override
   State<Tapbarscreen> createState() => _TapbarscreenState();
@@ -20,7 +20,8 @@ class _TapbarscreenState extends State<Tapbarscreen> {
           children: [
             TabBar(
               indicatorColor: Colors.white,
-              tabs: [Tab(
+              tabs: [
+                Tab(
                   icon: Icon(Icons.handshake,
                       color: Color.fromARGB(255, 160, 200, 236)),
                   text: "bid requests",
@@ -32,7 +33,6 @@ class _TapbarscreenState extends State<Tapbarscreen> {
                   ),
                   text: "direct requests",
                 ),
-                
               ],
             ),
             const Expanded(
@@ -40,7 +40,6 @@ class _TapbarscreenState extends State<Tapbarscreen> {
                 children: [
                   Bidrequest(),
                   Directrequest(),
-                  
                 ],
               ),
             )

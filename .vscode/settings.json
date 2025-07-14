@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "C:/Users/Rashi/snowplow/linux/flutter"
+    "cmake.sourceDirectory": "C:/Users/Rashi/snowplow/linux/flutter",
+    "dart.flutterSdkPath": "C:\\flutter"
 }

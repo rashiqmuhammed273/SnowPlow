@@ -1,10 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class Cmprofile extends StatefulWidget {
-  final List<String>? agencydetail;
-  const Cmprofile({super.key, required this.agencydetail});
+ final String? agencyid;
+  const Cmprofile({super.key,required  this.agencyid});
 
   @override
   State<Cmprofile> createState() => _CmprofileState();
@@ -14,31 +17,23 @@ class _CmprofileState extends State<Cmprofile> {
   final nameController = TextEditingController();
   final contactController = TextEditingController();
   final emailController = TextEditingController();
+  final locationController = TextEditingController();
 
   String? companyId;
 
   @override
   void initState() {
     super.initState();
-    // getUserId();
+   companyId=widget.agencyid;
+   print("agency id in profile page$companyId");
     fetchProfileData();
   }
 
   Future<void> fetchProfileData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    // companyId = prefs.getString("agencyid");
+    // String? token=prefs.getString("_apikey");
 
-    List<String>? profiledata = prefs.getStringList("agency_profile");
-
-    print(profiledata);
-
-    if (profiledata != null) {
-      companyId = profiledata[0];
-      nameController.text = profiledata[1];
-      emailController.text = profiledata[2];
-      contactController.text = profiledata[3];
-    } else {
-      print("profiledata is null");
-    }
     if (companyId == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -46,6 +41,53 @@ class _CmprofileState extends State<Cmprofile> {
         );
       }
       return;
+    }
+
+    try {
+      String apiUrl = "https://snowplow.celiums.com/api/agencies/details";
+      var response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+
+      
+          'api_mode': 'test',
+        },
+        body: jsonEncode({
+          'agency_id': companyId,
+          'api_mode': 'test',
+        }),
+      );
+      if (response.statusCode == 200) {
+        var data = jsonDecode(response.body);
+        if (data["status"] == 1) {
+          var userData = data['data'];
+          if (mounted) {
+            setState(() {
+              nameController.text = userData["agency_name"] ?? "";
+              emailController.text = userData["agency_email"] ?? "";
+              contactController.text = userData["agency_phone"] ?? "";
+              locationController.text = userData["agency_country"] ?? "";
+            });
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content:
+                      Text(data['message'] ?? "Failed to fetch profile data")),
+            );
+          }
+        }
+      } else {
+        throw Exception("Failed to load profile: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Something went wrong, please try again')),
+      );
     }
   }
 
@@ -88,7 +130,7 @@ class _CmprofileState extends State<Cmprofile> {
   ///logoutusercode////
   void logoutUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove("agency_profile");
+    await prefs.remove("agency_id");
     Navigator.pushNamedAndRemoveUntil(
       context,
       "/home",
@@ -137,7 +179,7 @@ class _CmprofileState extends State<Cmprofile> {
 
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.remove("userId");
+      await prefs.remove("agency_id");
       Navigator.pushReplacementNamed(context, "/home");
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -223,6 +265,9 @@ class _CmprofileState extends State<Cmprofile> {
                         _buildModernProfileField("Email", emailController),
                         const SizedBox(height: 16),
                         _buildModernProfileField("Phone", contactController),
+                        const SizedBox(height: 32),
+                        _buildModernProfileField(
+                            "location", locationController),
                         const SizedBox(height: 32),
                         _buildModernButton(
                           icon: Icons.edit_rounded,
@@ -315,6 +360,7 @@ class _CmprofileState extends State<Cmprofile> {
       ],
     );
   }
+  
 
 // Modern Button with Micro-interactions
   Widget _buildModernButton({
@@ -350,7 +396,9 @@ class _CmprofileState extends State<Cmprofile> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(icon, size: 20, color: const Color.fromARGB(255, 168, 213, 249)),
+                  Icon(icon,
+                      size: 20,
+                      color: const Color.fromARGB(255, 168, 213, 249)),
                   const SizedBox(width: 10),
                   Text(
                     label,
@@ -368,4 +416,7 @@ class _CmprofileState extends State<Cmprofile> {
       ),
     );
   }
+
+
+  
 }

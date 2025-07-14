@@ -2,15 +2,16 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:snowplow/user/companyrequest.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:snowplow/user/Company%20Request/companyrequest.dart';
 import 'package:http/http.dart' as http;
+import 'package:snowplow/user/Company%20Request/showdirect.dart';
+import 'package:snowplow/user/homepage.dart';
 
 class CompanyDetailScreen extends StatefulWidget {
   final Map<String, dynamic> selectedcompany;
-  final String? agencyid;
 
-  const CompanyDetailScreen(
-      {super.key, required this.selectedcompany, required this.agencyid});
+  const CompanyDetailScreen({super.key, required this.selectedcompany});
 
   @override
   State<CompanyDetailScreen> createState() => _CompanyDetailScreenState();
@@ -18,51 +19,64 @@ class CompanyDetailScreen extends StatefulWidget {
 
 class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
   List<dynamic> requestdata = [];
-  String? companyId;
+  String? companyid;
   String? companyname;
   bool isLoading = false;
+  String? userId;
   @override
   void initState() {
     super.initState();
-    companyId = widget.selectedcompany['id'];
+    companyid = widget.selectedcompany['id'];
     companyname = widget.selectedcompany['name'];
+    print("companyid is $companyid, companyname is $companyname");
 
     _getrequest();
   }
 
   Future<void> _getrequest() async {
-    if (companyId == null) {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    userId = prefs.getString('userId');
+
+    if (companyid == null) {
       setState(() => isLoading = false);
       return;
     }
     try {
-      String apiUrl = 'https://snowplow.celiums.com/api/bids/requests';
+      String apiUrl = 'https://snowplow.celiums.com/api/requests/list';
 
       final response = await http.post(Uri.parse(apiUrl),
           headers: {
             "Content-Type": "application/json",
             "Accept": "application/json",
           },
-          body: jsonEncode({"agency_id": companyId, "api_mode": "test"}));
+          body: jsonEncode({
+            "agency_id": companyid,
+            "customer_id": userId,
+            "per_page": "10",
+            "page": "0",
+            "api_mode": "test"
+          }));
 
-      print("🔁 Response Code: ${response.statusCode}");
-      print("📦 Response Body: ${response.body}");
       if (response.statusCode == 200) {
+        print("🔁 Response Code: ${response.statusCode}");
+        print("📦 Response Body: ${response.body}");
         final responseData = jsonDecode(response.body);
         List<dynamic> requestlist = responseData['data'];
         print(requestlist);
 
         if (requestlist.isNotEmpty) {
           List<dynamic> singlerequest = requestlist.map((request) {
+            final status = request["status"] as String? ?? "1";
             return {
               "requestId": request["request_id"],
               "created": request["created"],
               "urgency": request["urgency_level"] ?? "Not specified",
               "preferred_time": request["preferred_time"] ?? "Not specified",
               "preferred_date": request["preferred_date"] ?? "Not specified",
-              "service_street": request["service_street"] ?? "Not specified",
+              "service_area": request["service_area"] ?? "Not specified",
               "image": request["image"]?.toString(),
               "status": request["status"],
+              "is_accepted": status.toLowerCase() == "0",
             };
           }).toList();
           print("singlerequest$singlerequest");
@@ -96,103 +110,61 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFF),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 120,
-            floating: false,
-            pinned: true,
-            backgroundColor: Colors.white,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded,
-                  color: Color(0xFF3A7BD5)),
-              onPressed: () => Navigator.pop(context),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                companyname!,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF3A7BD5),
-                ),
+      body: RefreshIndicator(
+        onRefresh: _getrequest,
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 80,
+              floating: false,
+              pinned: true,
+              backgroundColor: Colors.white,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded,
+                    color: Color(0xFF3A7BD5)),
+                onPressed: () => Navigator.pop(context),
               ),
-              centerTitle: true,
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFFFFFFFF), Color(0xFFF1F7FF)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+              flexibleSpace: FlexibleSpaceBar(
+                title: Text(
+                  companyname!,
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF3A7BD5),
                   ),
                 ),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                children: [
-                  _buildProfileCard(),
-                  const SizedBox(height: 24),
-                  _buildInfoSection(),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Service Requests',
-                    style: GoogleFonts.poppins(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF3A7BD5),
+                centerTitle: true,
+                background: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFFFFFFFF), Color(0xFFF1F7FF)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  isLoading
-                      ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      : requestdata.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                children: [
-                                  Icon(Icons.inbox_rounded,
-                                      size: 48,
-                                      color: Colors.blueGrey.shade200),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    "No requests found",
-                                    style: GoogleFonts.poppins(
-                                      fontSize: 16,
-                                      color: Colors.blueGrey,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: requestdata.length,
-                              itemBuilder: (context, index) {
-                                final request = requestdata[index];
-                                return _buildRequestCard(request);
-                              },
-                            ),
-                  // Space for bottom button
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            SliverToBoxAdapter(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  children: [
+                    _buildProfileCard(),
+                    const SizedBox(height: 24),
+                    _buildInfoSection(),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _buildRequestButton(context),
+      floatingActionButton: _buildRequestButtons(context),
     );
   }
 
@@ -340,144 +312,78 @@ class _CompanyDetailScreenState extends State<CompanyDetailScreen> {
     );
   }
 
-  Widget _buildRequestCard(Map<String, dynamic> request) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.schedule, color: Color(0xFF3A7BD5)),
-                const SizedBox(width: 8),
-                Text(
-                  "Request ID: ${request['requestId']}",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF2D3748),
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    request["status"] ?? "Unknown",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.blue.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
+  Widget _buildRequestButtons(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ───────── Schedule button (your original) ─────────
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF3A7BD5),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(50),
             ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(
-                  "${request['preferred_date']} at ${request['preferred_time']}",
-                  style: TextStyle(color: Colors.grey.shade700),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 18, color: Colors.grey),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    request['service_street'] ?? "No street provided",
-                    style: TextStyle(color: Colors.grey.shade700),
-                  ),
-                ),
-              ],
-            ),
-            if (request['image'] != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    request['image'],
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Text('Image failed to load'),
-                  ),
+            elevation: 4,
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => Companydirect(
+                  selectedAgency: companyname!,
+                  companyId: companyid!,
                 ),
               ),
-          ],
+            );
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.snowmobile, size: 22),
+              const SizedBox(width: 12),
+              Text(
+                "Schedule Snow Removal",
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
-  }
 
-  Widget _buildRequestButton(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(50),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.15),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF3A7BD5),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(50),
-          ),
-          elevation: 0,
-        ),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => Companydirect(
-                selectedAgency: companyname!,
-                companyId: widget.selectedcompany['id'],
-              ),
+        const SizedBox(height: 12),
+
+        // ───────── NEW: View‑my‑requests button ─────────
+        OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF3A7BD5),
+            side: const BorderSide(color: Color(0xFF3A7BD5), width: 1.5),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(50),
             ),
-          );
-        },
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.snowmobile, size: 22),
-            const SizedBox(width: 12),
-            Text(
-              "Schedule Snow Removal",
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => HomeScreen(),
               ),
-            ),
-          ],
+            );
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.list_alt, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                "View All Company Requests",
+                style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

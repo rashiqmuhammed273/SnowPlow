@@ -16,7 +16,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   TextEditingController nameController = TextEditingController();
   TextEditingController contactController = TextEditingController();
-  TextEditingController addressController = TextEditingController();
+  TextEditingController locationcontroller = TextEditingController();
   TextEditingController emailController = TextEditingController();
 
   String? userId;
@@ -48,7 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       return;
     }
-    String url = "https://snowplow.celiums.com/api/profile/details";
+    String url ="https://snowplow.celiums.com/api/profile/details";
 
     try {
       final response = await http.post(
@@ -76,7 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               nameController.text = userData['customer_name'] ?? "";
               emailController.text = userData['customer_email'] ?? "";
               contactController.text = userData['customer_phone'] ?? "";
-              addressController.text = userData['customer_address'] ?? "";
+              locationcontroller.text = userData['customer_country'] ?? "";
             });
             print("TOKEN IS $token");
           }
@@ -187,8 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> deleteCustomerprofile() async {
     if (userId == null) return;
 
-    String url =
-        "https://firestore.googleapis.com/v1/projects/snow-plow-d24c0/databases/(default)/documents/users/$userId";
+    String url = "";
 
     try {
       final response = await http.delete(Uri.parse(url));
@@ -233,97 +232,240 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build( context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 213, 233, 245),
-      appBar: AppBar(
-        backgroundColor: Color.fromARGB(255, 169, 232, 243),
-        title: Text(
-          nameController.text.isNotEmpty ? nameController.text : "My Profile",
-          style: GoogleFonts.poppins(
-              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
-        ),
-        elevation: 2,
-        shadowColor: Colors.grey.withOpacity(0.1),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            Container(
+      backgroundColor: const Color(0xFFF8FBFF), // Soft blue background
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 15,
-                    offset: const Offset(0, 6),
-                  )
-                ],
-              ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 52,
-                    child: Icon(Icons.person_2_rounded),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildProfileField("Name", nameController),
-                  _buildProfileField("Contact", contactController),
-                  _buildProfileField("Address", addressController),
-                  _buildProfileField("Email", emailController),
-                  const SizedBox(height: 30),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.pushNamed(context, "/editProfile");
-                    },
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    label: Text("Edit Profile",
-                        style: GoogleFonts.poppins(fontSize: 16)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4A90E2),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                  // Elegant Profile Card
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.08),
+                          blurRadius: 40,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: showDeleteConfirmationDialog,
-                    icon: const Icon(Icons.delete_forever, color: Colors.white),
-                    label: Text("Delete Profile",
-                        style: GoogleFonts.poppins(fontSize: 16)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE94E77),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: showlogoutDialogue,
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    label: Text("Logout",
-                        style: GoogleFonts.poppins(fontSize: 16)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7B8794),
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
+                    child: Column(
+                      children: [
+                        // Profile Header with subtle gradient
+                        Container(
+                          height: 140,
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(24)),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.blue.shade50,
+                                Colors.blue.shade100.withOpacity(0.3),
+                              ],
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Stack(
+                            alignment: Alignment.bottomCenter,
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                top: 20,
+                                child: Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 4,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.blue.withOpacity(0.1),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipOval(
+                                    child: Image.asset(
+                                      "assets/man.png",
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+                          child: Column(
+                            children: [
+                              // Profile Title
+                              Text(
+                                "PROFILE INFORMATION",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blueGrey.shade500,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Elegant Info Items
+                              _buildElegantInfoItem(Icons.person_outline,
+                                  "Full Name", nameController.text),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Divider(
+                                    height: 1, color: Color(0xFFEEF5FD)),
+                              ),
+                              _buildElegantInfoItem(Icons.email_outlined,
+                                  "Email Address", emailController.text),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Divider(
+                                    height: 1, color: Color(0xFFEEF5FD)),
+                              ),
+                              _buildElegantInfoItem(Icons.phone_iphone,
+                                  "Contact Number", contactController.text),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Divider(
+                                    height: 1, color: Color(0xFFEEF5FD)),
+                              ),
+
+                              const SizedBox(height: 32),
+
+                              // Sophisticated Action Buttons
+                              _buildElegantButton(
+                                icon: Icons.edit_document,
+                                label: "Edit Profile",
+                                color: Colors.blue.shade700,
+                                onPressed: () => Navigator.pushNamed(
+                                    context, "/editProfile"),
+                              ),
+                              const SizedBox(height: 12),
+                              _buildElegantButton(
+                                icon: Icons.delete_outline,
+                                label: "Delete Account",
+                                color: Colors.red.shade400,
+                                onPressed: showDeleteConfirmationDialog,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildElegantButton(
+                                icon: Icons.logout,
+                                label: "Sign Out",
+                                color: Colors.blueGrey.shade600,
+                                onPressed: showlogoutDialogue,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildElegantInfoItem(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: Colors.blue.shade50,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.blue.shade700, size: 20),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label.toUpperCase(),
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.blueGrey.shade500,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.blueGrey.shade800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildElegantButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
+    return SizedBox(
+      height: 50,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color.withOpacity(0.05),
+          foregroundColor: color,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: color.withOpacity(0.2),
+              )),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
         ),
       ),
     );
-  }
+  } 
 }

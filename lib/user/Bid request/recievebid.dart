@@ -2,7 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
-import 'package:snowplow/user/pendingrequest.dart';
+import 'package:snowplow/Animation.dart';
+import 'package:snowplow/user/Bid%20request/pendingrequest.dart';
+import 'package:snowplow/user/bottomnav.dart';
+import 'package:snowplow/user/homepage.dart';
 
 class Recievebid extends StatefulWidget {
   final String? requestid;
@@ -94,23 +97,21 @@ class _RecievebidState extends State<Recievebid> {
       });
 
       final response = await http.post(
-        Uri.parse("https://snowplow.celiums.com/api/bids/createbid"),
+        Uri.parse("https://snowplow.celiums.com/api/bids/accept"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"bid_id": bidid, "api_mode": "test"}),
       );
 
       if (response.statusCode == 200) {
-       
-        showCustomSnackBar("Bid Accepted Successfully!", true);
-        await getRequest(); 
-         setState(() {
+        showCustomSnackBar("Bid Accepted Successfully!", true); 
+        await getRequest();
+        setState(() {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const Pendingrequest()),
+            MaterialPageRoute(builder: (context) => const Bottomnavbar()),
           );
         });
-
-      }else{
+      } else {
         showCustomSnackBar("Failed to Accept Bid", false);
       }
     } catch (e) {
@@ -137,20 +138,7 @@ class _RecievebidState extends State<Recievebid> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(0, 255, 249, 249),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color.fromARGB(255, 201, 218, 234),
-              Color.fromARGB(255, 221, 233, 239),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: _buildBody(),
-      ),
+      body: _buildBody(),
       appBar: _buildAppBar(),
     );
   }
@@ -188,10 +176,7 @@ class _RecievebidState extends State<Recievebid> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(secondaryColor),
-            ),
+           SnowLoader(),
             const SizedBox(height: 20),
             Text(
               "Loading bids...",
@@ -211,17 +196,17 @@ class _RecievebidState extends State<Recievebid> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.inbox_outlined,
+              Icons.sentiment_neutral_outlined,
               size: 72,
               color: const Color.fromARGB(255, 119, 193, 218),
             ),
             const SizedBox(height: 24),
             Text(
-              "This bid is not available",
+              "Sorry...This bid is not seen by any companies,please wait untill they send a bid",
               style: GoogleFonts.poppins(
                 fontSize: 20,
                 fontWeight: FontWeight.w500,
-                color: const Color.fromARGB(255, 230, 93, 35),
+                color: const Color.fromARGB(255, 119, 193, 218),
               ),
             ),
             const SizedBox(height: 12),
@@ -252,7 +237,11 @@ class _RecievebidState extends State<Recievebid> {
       },
     );
   }
+// ---------------------------------------------------------------------------------------------------------------
 
+// checking already accepted the bid or not//
+
+// -----------------------------------------------------------------------------------------------------------------
   Widget _buildBidItem(Map<String, dynamic> bid, String formattedDate) {
     final bool alreadyAccepted = bid["is_accepted"] == true;
     print("Bid ${bid["bid_id"]} is accepted? ${bid["is_accepted"]}");
@@ -328,7 +317,7 @@ class _RecievebidState extends State<Recievebid> {
               _buildDetailCell(
                 Icons.rate_review,
                 "Status",
-                 bid["status"]?.toString().toUpperCase() ?? "N/A",
+                bid["status"]?.toString().toUpperCase() ?? "N/A",
                 secondaryColor,
               ),
             ],
@@ -371,7 +360,7 @@ class _RecievebidState extends State<Recievebid> {
                           Navigator.pushReplacement(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => const Pendingrequest()),
+                                builder: (context) =>  Bidpending()),
                           );
                         },
                         style: OutlinedButton.styleFrom(
@@ -383,7 +372,7 @@ class _RecievebidState extends State<Recievebid> {
                           ),
                         ),
                         child: Text(
-                          "DECLINE",
+                          "Ignore",
                           style: GoogleFonts.poppins(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -566,7 +555,8 @@ class _RecievebidState extends State<Recievebid> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          side: BorderSide(color: const Color.fromARGB(255, 239, 12, 12)),
+                          side: BorderSide(
+                              color: const Color.fromARGB(255, 239, 12, 12)),
                         ),
                         child: Text(
                           "CANCEL",
@@ -586,7 +576,7 @@ class _RecievebidState extends State<Recievebid> {
                           acceptBid(bidId);
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: secondaryColor,
+                          backgroundColor: Colors.green,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(

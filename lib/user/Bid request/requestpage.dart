@@ -44,7 +44,7 @@ class _RequestPageState extends State<RequestPage> {
 
   final picker = ImagePicker();
   File? _selectedImage;
- 
+
   List<String> servicetype = [];
 
   List<String> companyList = [];
@@ -138,8 +138,22 @@ class _RequestPageState extends State<RequestPage> {
       setState(() {
         selectedTime = pickedTime;
 
-        final dt = DateTime(pickedTime.hour, pickedTime.minute);
-        formattedtime = DateFormat('hh:mm a').format(dt); // Example: 02:30 PM
+        final now = DateTime.now(); // today’s real date
+        final dt = DateTime(
+          // year, month, day, hour, min
+          now.year,
+          now.month,
+          now.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        // 24‑hour with seconds -> “14:30:00”
+        formattedtime = DateFormat('hh:mm:ss').format(dt);
+        
+
+        // If you prefer “02:30 PM”:
+        // formattedtime = DateFormat('hh:mm a').format(dt);
       });
     }
   }
@@ -177,7 +191,7 @@ class _RequestPageState extends State<RequestPage> {
         position.latitude,
         position.longitude,
       );
-      serviceLatitude =  position.latitude;
+      serviceLatitude = position.latitude;
       serviceLongitude = position.longitude;
 
       if (placemarks.isNotEmpty) {
@@ -243,8 +257,8 @@ class _RequestPageState extends State<RequestPage> {
     String requestId = const Uuid().v4();
 
     ////getting userid
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          String? userId = prefs.getString('userId');
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? userId = prefs.getString('userId');
     String? token = prefs.getString("token");
 
     /// Determine Firestore collection
@@ -280,6 +294,7 @@ class _RequestPageState extends State<RequestPage> {
 
       if (response.statusCode == 200) {
         print("✅ Request posted successfully  with ID: $requestId");
+        print("request data is $response");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text("Request submitted successfully!"),
@@ -287,18 +302,6 @@ class _RequestPageState extends State<RequestPage> {
           ),
         );
 
-        // setState(() {
-        //   locationController.clear();
-        //   _urgency="";
-        //   selectedservicetype="";
-        //   areaController.clear();
-        //   selectedDate = null;
-        //   selectedTime = null;
-        //   selectedOption = "";
-        //   selectedAreaType = "";
-        //   _selectedImage = null;
-        //   selectedCompany = "";
-        // });
         Navigator.pop(
             context, MaterialPageRoute(builder: (context) => HomeScreen()));
       } else {
@@ -423,7 +426,6 @@ class _RequestPageState extends State<RequestPage> {
                   children: [
                     buildRadioButton('Bid'),
                     SizedBox(width: 20),
-                    buildRadioButton('Direct')
                   ],
                 ),
                 // if (selectedOption == "Direct") SizedBox(height: 10),
